@@ -1,0 +1,8 @@
+#!/bin/bash
+echo "Generating Scanner..."
+java -jar tools/jflex.jar spec/scanner.flex
+echo "Generating Parser..."
+java -jar tools/java-cup-11b.jar -destdir spec/ -expect 1 spec/parser.cup
+echo "Compiling..."
+javac -cp ".:tools/java-cup-11b-runtime.jar:src:spec" MiniJava.java
+echo "Build successful!"

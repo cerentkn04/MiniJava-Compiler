@@ -1,0 +1,23 @@
+MiniJava Compiler Project - Parser & AST Notes
+----------------------------------------------
+
+1. Grammar Adjustments & LALR(1) Compatibility:
+   To resolve IDENTIFIER ambiguities in an LALR(1) context, the grammar 
+   enforces a strict "Declarations before Statements" order in method 
+   bodies and the main class.
+
+2. Conflict Handling:
+   The grammar contains 1 expected Shift/Reduce conflict (Dangling Else). 
+   This is handled using the '-expect 1' flag and resolved via the default 
+   shift action, consistent with Java semantics.
+
+3. AST & Line Numbers:
+   Line numbers are captured by JFlex (%line) and passed through the 
+   Symbol factory into the ASTNode base class. The -A visitor prints 
+   these coordinates for every major node.
+
+4. Automation & CLI:
+   To simplify the build and test process, two wrapper scripts were 
+   implemented:
+   - ./build: Automates JFlex, CUP, and Javac steps.
+   - ./mj: A custom CLI wrapper that handles classpaths and arguments.

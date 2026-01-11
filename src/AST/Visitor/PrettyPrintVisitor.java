@@ -76,7 +76,6 @@ public class PrettyPrintVisitor implements Visitor {
                                  n.left.accept(this);
                                  System.out.print(" * ");
                                  n.right.accept(this);
-                                 System.out.print(" * ");
                                  System.out.print(")");}
     public void visit(Lt n) { System.out.print("("); n.left.accept(this); System.out.print(" < "); n.right.accept(this); System.out.print(")"); }
     public void visit(And n) { System.out.print("("); n.left.accept(this); System.out.print(" && "); n.right.accept(this); System.out.print(")"); }
