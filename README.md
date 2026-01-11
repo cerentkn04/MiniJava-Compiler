@@ -1,18 +1,12 @@
 # MiniJava Compiler - Parser & AST
 
-This project implements a Parser and Abstract Syntax Tree (AST) generator for the MiniJava language using JFlex and java-cup.
+This project implements a complete compiler front-end for the MiniJava language, featuring a lexical scanner (JFlex), an LALR(1) parser (CUP), and an Abstract Syntax Tree (AST) generator.
 
-## Features
-- **LALR(1) Parser**: Handles MiniJava grammar with disambiguated variable/statement rules.
-- **AST Generation**: Produces a full tree with line number tracking.
-- **Visitors**: 
-  - `-A`: Prints a vertically indented Abstract Syntax Tree.
-  - `-P`: Pretty-prints the AST back into legal Java code.
+## 🚀 Build & Run
 
-## How to Build
-1. Generate Scanner: `java -jar tools/jflex.jar spec/scanner.flex`
-2. Generate Parser: `java -jar tools/java-cup-11b.jar -destdir spec/ -expect 1 spec/parser.cup`
-3. Compile: `javac -cp ".:tools/java-cup-11b-runtime.jar:src:spec" MiniJava.java`
+We use automation scripts to handle the complex classpaths and tool requirements.
 
-## How to Run
-`java -cp ".:tools/java-cup-11b-runtime.jar:src:spec" MiniJava -A YourFile.java`
+### 1. Build the Project
+The `./build` script automates the entire generation and compilation pipeline:
+```bash
+./build
