@@ -1,0 +1,6 @@
+*.class
+spec/parser.java
+spec/sym.java
+spec/MiniJavaScanner.java
+spec/*.java~
+tools/*.jar

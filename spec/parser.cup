@@ -1,0 +1,164 @@
+import java_cup.runtime.*;
+import java.util.*;
+import AST.*;
+
+
+parser code {:
+    MiniJavaScanner lexer;
+    boolean errorDetected;
+    public parser(MiniJavaScanner lex) { 
+        this.lexer = lex;
+        super(lex); 
+        errorDetected = false; 
+    }
+    public void report_error(String message, Object info) {
+        errorDetected = true;
+        if(info instanceof Symbol) {
+            Symbol sym = (Symbol) info;
+            System.err.println("Parse error at line " + (sym.left + 1) + ", column " + (sym.right + 1));
+        }
+    }
+:};
+
+scan with {: return lexer.next_token(); :};
+
+terminal CLASS, PUBLIC, STATIC, VOID, MAIN, EXTENDS, RETURN;
+terminal INT, BOOLEAN, IF, ELSE, WHILE, THIS, NEW, TRUE, FALSE;
+terminal PRINT;
+terminal ASSIGN, LT, PLUS, MINUS, TIMES, NOT, AND;
+terminal SEMICOLON, COMMA, DOT;
+terminal LPAREN, RPAREN;
+terminal LBRACE, RBRACE;
+terminal LBRACKET, RBRACKET;
+terminal String IDENTIFIER;
+terminal Integer INTEGER_LITERAL;
+
+non terminal AST.Program program;
+non terminal AST.MainClass mainClass;
+non terminal List<AST.ClassDecl> classDecls;
+non terminal AST.ClassDecl classDecl;
+non terminal List<AST.VarDecl> varDecls;
+non terminal AST.VarDecl varDecl;
+non terminal List<AST.MethodDecl> methodDecls;
+non terminal AST.MethodDecl methodDecl;
+non terminal List<AST.Statement> statements;
+non terminal AST.Statement statement;
+non terminal AST.Exp exp;
+non terminal AST.Type type;
+non terminal List<AST.VarDecl> formalParamList;
+non terminal List<AST.VarDecl> formalParamRest;
+non terminal List<AST.Exp> argList;
+non terminal List<AST.Exp> argListRest;
+
+precedence right ASSIGN;
+precedence left AND;
+precedence left LT;
+precedence left PLUS, MINUS;
+precedence left TIMES;
+precedence right NOT;
+precedence left DOT, LBRACKET, LPAREN;
+
+start with program;
+
+program ::= mainClass:m classDecls:cs
+    {: RESULT = new AST.Program(m, cs, mleft); :};
+
+mainClass ::= CLASS IDENTIFIER:cname LBRACE
+                PUBLIC STATIC VOID MAIN LPAREN IDENTIFIER LBRACKET RBRACKET IDENTIFIER:arg RPAREN
+                LBRACE:l statements:s RBRACE
+             RBRACE
+    {: RESULT = new AST.MainClass(cname, arg, new AST.Block(new ArrayList<AST.VarDecl>(), s, lleft), cnameleft); :};
+
+classDecls ::= classDecls:cs classDecl:c 
+    {: cs.add(c); RESULT = cs; :}
+    | 
+    {: RESULT = new ArrayList<AST.ClassDecl>(); :};
+
+classDecl ::= CLASS IDENTIFIER:name LBRACE varDecls:vs methodDecls:ms RBRACE
+                {: RESULT = new AST.ClassDeclSimple(name, vs, ms, nameleft); :}
+            | CLASS IDENTIFIER:name EXTENDS IDENTIFIER:parent LBRACE varDecls:vs methodDecls:ms RBRACE
+                {: RESULT = new AST.ClassDeclExtends(name, parent, vs, ms, nameleft); :};
+
+/* Strictly left-recursive lists without empty alternatives here to avoid ambiguity */
+varDecls ::= varDecls:vs varDecl:v 
+    {: vs.add(v); RESULT = vs; :}
+    | 
+    {: RESULT = new ArrayList<AST.VarDecl>(); :};
+
+varDecl ::= type:t IDENTIFIER:name SEMICOLON
+            {: RESULT = new AST.VarDecl(t, name, nameleft); :};
+
+methodDecls ::= methodDecls:ms methodDecl:m 
+    {: ms.add(m); RESULT = ms; :}
+    | 
+    {: RESULT = new ArrayList<AST.MethodDecl>(); :};
+
+methodDecl ::= PUBLIC type:t IDENTIFIER:name
+                 LPAREN formalParamList:params RPAREN
+                 LBRACE varDecls:locals statements:stmts RETURN exp:ret SEMICOLON RBRACE
+    {: RESULT = new AST.MethodDecl(t, name, params, locals, stmts, ret, tleft); :};
+
+formalParamList ::= type:t IDENTIFIER:name formalParamRest:r
+                    {: List<AST.VarDecl> list = new ArrayList<AST.VarDecl>();
+                       list.add(new AST.VarDecl(t, name, nameleft));
+                       list.addAll(r); RESULT = list; :}
+                |  
+                    {: RESULT = new ArrayList<AST.VarDecl>(); :};
+
+formalParamRest ::= COMMA type:t IDENTIFIER:name formalParamRest:r
+                    {: List<AST.VarDecl> list = new ArrayList<AST.VarDecl>();
+                       list.add(new AST.VarDecl(t, name, nameleft));
+                       list.addAll(r); RESULT = list; :}
+                | 
+                    {: RESULT = new ArrayList<AST.VarDecl>(); :};
+
+statements ::= statements:ss statement:s 
+    {: ss.add(s); RESULT = ss; :}
+    | 
+    {: RESULT = new ArrayList<AST.Statement>(); :};
+
+statement ::= LBRACE statements:st RBRACE 
+                {: RESULT = new AST.Block(new ArrayList<AST.VarDecl>(), st, stleft); :}
+            | IF LPAREN exp:e RPAREN statement:s1 ELSE statement:s2 
+                {: RESULT = new AST.If(e, s1, s2, eleft); :}
+            | WHILE LPAREN exp:e RPAREN statement:s 
+                {: RESULT = new AST.While(e, s, eleft); :}
+            | PRINT LPAREN exp:e RPAREN SEMICOLON 
+                {: RESULT = new AST.Print(e, eleft); :}
+            | IDENTIFIER:id ASSIGN exp:e SEMICOLON 
+                {: RESULT = new AST.Assign(id, e, idleft); :}
+            | IDENTIFIER:id LBRACKET exp:i RBRACKET ASSIGN exp:e SEMICOLON 
+                {: RESULT = new AST.ArrayAssign(id, i, e, idleft); :};
+
+exp ::= exp:e1 PLUS exp:e2          {: RESULT = new AST.Plus(e1, e2, e1left); :}
+    | exp:e1 MINUS exp:e2         {: RESULT = new AST.Minus(e1, e2, e1left); :}
+    | exp:e1 TIMES exp:e2         {: RESULT = new AST.Times(e1, e2, e1left); :}
+    | exp:e1 LT exp:e2            {: RESULT = new AST.Lt(e1, e2, e1left); :}
+    | exp:e1 AND exp:e2           {: RESULT = new AST.And(e1, e2, e1left); :}
+    | NOT exp:e                   {: RESULT = new AST.Not(e, eleft); :}
+    | INTEGER_LITERAL:i           {: RESULT = new AST.IntegerLiteral(i, ileft); :}
+    | TRUE:t                      {: RESULT = new AST.BooleanLiteral(true, tleft); :}
+    | FALSE:f                     {: RESULT = new AST.BooleanLiteral(false, fleft); :}
+    | IDENTIFIER:id               {: RESULT = new AST.IdentifierExp(id, idleft); :}
+    | THIS:t                      {: RESULT = new AST.This(tleft); :}
+    | NEW INT LBRACKET exp:e RBRACKET {: RESULT = new AST.NewIntArray(e, eleft); :}
+    | NEW IDENTIFIER:id LPAREN RPAREN {: RESULT = new AST.NewObject(id, idleft); :}
+    | exp:e LBRACKET exp:i RBRACKET {: RESULT = new AST.ArrayLookup(e, i, eleft); :}
+    | exp:e DOT IDENTIFIER:id LPAREN argList:args RPAREN {: RESULT = new AST.Call(e, id, args, eleft); :}
+    | exp:e DOT IDENTIFIER:id     {: if(id.equals("length")) RESULT = new AST.ArrayLength(e, eleft); :}
+    | LPAREN exp:e RPAREN         {: RESULT = e; :};
+
+argList ::= exp:e argListRest:r 
+    {: r.add(0, e); RESULT = r; :}
+    | 
+    {: RESULT = new ArrayList<AST.Exp>(); :};
+
+argListRest ::= COMMA exp:e argListRest:r 
+    {: r.add(0, e); RESULT = r; :}
+    | 
+    {: RESULT = new ArrayList<AST.Exp>(); :};
+
+type ::= INT:i LBRACKET RBRACKET {: RESULT = new AST.IntArrayType(ileft); :}
+       | INT:i                   {: RESULT = new AST.IntType(ileft); :}
+       | BOOLEAN:b               {: RESULT = new AST.BooleanType(bleft); :}
+       | IDENTIFIER:id           {: RESULT = new AST.IdentifierType(id, idleft); :};
